@@ -73,21 +73,35 @@ func (m *Machine[State]) TransitTo(s State) error {
 	return nil
 }
 
-func (m *Machine[State]) WaitForState(ctx context.Context, s State) error {
+func (m *Machine[State]) waitForState(ctx context.Context, s State, on bool) error {
 	m.mutex.RLock()
 	sw, ok := m.states[s]
 	if !ok {
 		m.mutex.RUnlock()
 		return ErrStateNotExists
 	}
+	var c <-chan struct{}
+	if on {
+		c = sw.On()
+	} else {
+		c = sw.Off()
+	}
 	m.mutex.RUnlock()
 
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
-	case <-sw.On():
+	case <-c:
 		return nil
 	}
+}
+
+func (m *Machine[State]) WaitForState(ctx context.Context, s State) error {
+	return m.waitForState(ctx, s, ON)
+}
+
+func (m *Machine[State]) WaitForStateToPass(ctx context.Context, s State) error {
+	return m.waitForState(ctx, s, OFF)
 }
 
 func (m *Machine[State]) CurrentState() State {
