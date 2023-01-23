@@ -116,3 +116,14 @@ func (m *Machine[State]) CurrentState() State {
 
 	panic("machine without state")
 }
+
+func (m *Machine[State]) StateSwitch(s State) *Switch {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+
+	sw, ok := m.states[s]
+	if !ok {
+		return nil
+	}
+	return sw
+}
